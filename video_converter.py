@@ -115,8 +115,10 @@ class VideoConverterApp(ctk.CTk):
         
         # Audio codec mapping
         self.audio_codec_map = {
-            "AAC (Universal)": {"codec": "aac", "bitrate": "192k"},
-            "Opus (Efficient)": {"codec": "libopus", "bitrate": "128k"}
+            "Copy Original (Recommended)": {"codec": "copy", "bitrate": None},
+            "AAC 128k": {"codec": "aac", "bitrate": "128k"},
+            "AAC 192k": {"codec": "aac", "bitrate": "192k"},
+            "Opus 128k": {"codec": "libopus", "bitrate": "128k"}
         }
         
         # Setup UI
@@ -204,20 +206,20 @@ class VideoConverterApp(ctk.CTk):
         )
         audio_label.grid(row=1, column=0, padx=(20, 10), pady=10, sticky="w")
         
-        self.audio_var = ctk.StringVar(value="AAC (Universal)")
+        self.audio_var = ctk.StringVar(value="Copy Original (Recommended)")
         self.audio_dropdown = ctk.CTkOptionMenu(
             settings_frame,
-            values=["AAC (Universal)", "Opus (Efficient)"],
+            values=["Copy Original (Recommended)", "AAC 128k", "AAC 192k", "Opus 128k"],
             variable=self.audio_var,
             font=ctk.CTkFont(size=13),
-            width=150
+            width=200
         )
         self.audio_dropdown.grid(row=1, column=1, padx=10, pady=10, sticky="w")
         
-        # Quality slider (UPDATED: 25-45, default 34)
+        # Quality slider (UPDATED: 35-50, default 40 for better compression)
         quality_label = ctk.CTkLabel(
             settings_frame,
-            text="RF/CQ Value:",
+            text="CQ Value (Higher = Smaller File):",
             font=ctk.CTkFont(size=14, weight="bold")
         )
         quality_label.grid(row=2, column=0, padx=(20, 10), pady=10, sticky="w")
@@ -226,12 +228,12 @@ class VideoConverterApp(ctk.CTk):
         slider_frame.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
         slider_frame.grid_columnconfigure(0, weight=1)
         
-        self.quality_var = ctk.IntVar(value=34)
+        self.quality_var = ctk.IntVar(value=40)
         self.quality_slider = ctk.CTkSlider(
             slider_frame,
-            from_=25,
-            to=45,
-            number_of_steps=20,
+            from_=35,
+            to=50,
+            number_of_steps=15,
             variable=self.quality_var,
             command=self.update_quality_label
         )
@@ -239,7 +241,7 @@ class VideoConverterApp(ctk.CTk):
         
         self.quality_value_label = ctk.CTkLabel(
             slider_frame,
-            text="34",
+            text="40",
             font=ctk.CTkFont(size=14, weight="bold"),
             width=40
         )
@@ -504,13 +506,14 @@ class VideoConverterApp(ctk.CTk):
             scale = self.resolution_map[resolution]
             cmd.extend(['-vf', f'scale={scale}:force_original_aspect_ratio=decrease'])
         
-        # Audio encoding (UPDATED: AAC or Opus based on selection)
+        # Audio encoding (UPDATED: Copy or re-encode based on selection)
         audio_selection = self.audio_var.get()
         audio_settings = self.audio_codec_map[audio_selection]
-        cmd.extend([
-            '-c:a', audio_settings['codec'],
-            '-b:a', audio_settings['bitrate']
-        ])
+        cmd.extend(['-c:a', audio_settings['codec']])
+        
+        # Only add bitrate if not copying
+        if audio_settings['bitrate'] is not None:
+            cmd.extend(['-b:a', audio_settings['bitrate']])
         
         # Subtitle handling
         cmd.extend(['-c:s', 'copy'])
